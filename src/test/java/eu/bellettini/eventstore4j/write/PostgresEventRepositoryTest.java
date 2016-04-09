@@ -72,10 +72,19 @@ public class PostgresEventRepositoryTest {
     }
 
     @Test(expected = ConsistencyException.class)
-    public void itShouldAvoidNonSubsequentAggregateVersions()
+    public void itShouldAvoidNonSubsequentAggregateVersionsOnASingleBatch()
     {
         EventDTO[] events = {anEvent(0), anEvent(2)};
         repository.store(events);
+    }
+
+    @Test(expected = ConsistencyException.class)
+    public void itShouldAvoidNonSubsequentAggregateVersionsInDifferentBatches()
+    {
+        EventDTO[] events = {anEvent(0), anEvent(1)};
+
+        repository.store(events);
+        repository.store(anEvent(3));
     }
 
     private void assertStoredEventEquals(EventDTO event) {

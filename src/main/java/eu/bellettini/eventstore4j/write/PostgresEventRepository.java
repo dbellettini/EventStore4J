@@ -101,12 +101,27 @@ public class PostgresEventRepository implements EventRepository {
 
     private void ensureSubsequentAggregateVersions(EventDTO... events)
     {
-        long start = events[0].getAggregateVersion();
+        long start = count(events[0].getAggregateId());
 
         for (int i = 0; i < events.length; ++i) {
             if (events[i].getAggregateVersion() != i + start) {
                 throw new ConsistencyException("Non subsequent aggregate versions");
             }
+        }
+    }
+
+    private long count(String aggregateId) {
+        final String sql = "SELECT COUNT(*) FROM events WHERE aggregate_id = ?";
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, aggregateId);
+
+            ResultSet resultSet = stmt.executeQuery();
+            resultSet.next();
+
+            return resultSet.getLong(1);
+        } catch (SQLException e) {
+            throw new EventStoreException(e);
         }
     }
 }
