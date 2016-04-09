@@ -43,8 +43,10 @@ public class PostgresEventRepository implements EventRepository {
             return;
         }
 
-        ensureExpectedVersion(aggregateId, expectedVersion);
-        storeEvents(aggregateId, expectedVersion, events);
+        execute(() -> {
+            ensureExpectedVersion(aggregateId, expectedVersion);
+            storeEvents(aggregateId, expectedVersion, events);
+        });
     }
 
     @Override
@@ -53,7 +55,43 @@ public class PostgresEventRepository implements EventRepository {
             return;
         }
 
-        storeEvents(aggregateId, count(aggregateId), events);
+        execute(()-> storeEvents(aggregateId, count(aggregateId), events));
+    }
+
+    @Override
+    public ReadEvent findOneById(UUID id) {
+        final String sql = "SELECT " +
+                "event_id::text, aggregate_id, aggregate_version, created_at, source, type, type_version, " +
+                "payload::text, received_at " +
+                "FROM events WHERE event_id = ?::uuid";
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, id.toString());
+
+            ResultSet resultSet = stmt.executeQuery();
+            resultSet.next();
+
+            return dtoFromResultSet(resultSet);
+        } catch (SQLException e) {
+            throw new EventStoreException(e);
+        }
+    }
+
+    private void execute(SQLUnitOfWork unitOfWork)
+    {
+        try {
+            connection.setAutoCommit(false);
+            unitOfWork.execute();
+            connection.commit();
+        } catch (SQLException e) {
+            throw new EventStoreException(e);
+        } finally {
+            try {
+                connection.setAutoCommit(true);
+            } catch (SQLException e) {
+                throw new EventStoreException(e);
+            }
+        }
     }
 
     private void ensureExpectedVersion(String aggregateId, long expectedVersion) {
@@ -73,8 +111,6 @@ public class PostgresEventRepository implements EventRepository {
                 "VALUES (?::uuid,?,?,?,?,?,?,?::json,?)";
 
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            connection.setAutoCommit(false);
-
             long version = expectedVersion;
             for (WriteEvent event: events) {
                 int i = 0;
@@ -89,31 +125,6 @@ public class PostgresEventRepository implements EventRepository {
                 stmt.setTimestamp(++i, Timestamp.from(clock.instant()));
                 stmt.execute();
             }
-        } catch (SQLException e) {
-            throw new EventStoreException(e);
-        } finally {
-            try {
-                connection.setAutoCommit(true);
-            } catch (SQLException e) {
-                throw new EventStoreException(e);
-            }
-        }
-    }
-
-    @Override
-    public ReadEvent findOneById(UUID id) {
-        final String sql = "SELECT " +
-                "event_id::text, aggregate_id, aggregate_version, created_at, source, type, type_version, " +
-                "payload::text, received_at " +
-                "FROM events WHERE event_id = ?::uuid";
-
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, id.toString());
-
-            ResultSet resultSet = stmt.executeQuery();
-            resultSet.next();
-
-            return dtoFromResultSet(resultSet);
         } catch (SQLException e) {
             throw new EventStoreException(e);
         }
