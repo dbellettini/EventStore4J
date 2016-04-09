@@ -39,6 +39,12 @@ public class PostgresEventRepository implements EventRepository, AutoCloseable {
 
     @Override
     public void store(EventDTO... events) {
+        if (events.length == 0) {
+            return;
+        }
+
+        ensureSubsequentAggregateVersions(events);
+
         final String sql = "INSERT INTO events " +
                 "(event_id, aggregate_id, aggregate_version, created_at, source," +
                 "type, type_version, payload, received_at) " +
@@ -99,5 +105,16 @@ public class PostgresEventRepository implements EventRepository, AutoCloseable {
                 resultSet.getString(8),
                 resultSet.getTimestamp(9).toInstant()
         );
+    }
+
+    private void ensureSubsequentAggregateVersions(EventDTO... events)
+    {
+        long start = events[0].getAggregateVersion();
+
+        for (int i = 0; i < events.length; ++i) {
+            if (events[i].getAggregateVersion() != i + start) {
+                throw new ConsistencyException("Non subsequent aggregate versions");
+            }
+        }
     }
 }
