@@ -3,7 +3,7 @@ package eu.bellettini.eventstore4j.write;
 import java.sql.*;
 import java.util.UUID;
 
-public class PostgresEventRepository implements EventRepository, AutoCloseable {
+public class PostgresEventRepository implements EventRepository {
     private final Connection connection;
 
 
@@ -86,11 +86,6 @@ public class PostgresEventRepository implements EventRepository, AutoCloseable {
         } catch (SQLException e) {
             throw new EventStoreException(e);
         }
-    }
-
-    @Override
-    public void close() throws Exception {
-        connection.close();
     }
 
     private EventDTO dtoFromResultSet(ResultSet resultSet) throws SQLException {
