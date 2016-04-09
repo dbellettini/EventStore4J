@@ -68,11 +68,16 @@ public class PostgresEventRepositoryTest {
     public void itShouldStoreAnEventBatch()
     {
         WriteEvent[] events = {anEvent(), anEvent()};
-        repository.store("42", 0, events);
+        String aggregateId = "42";
+        repository.store(aggregateId, 0, events);
 
+        int i = 0;
         assertEquals(events.length, repository.count());
+        
         for(WriteEvent event : events) {
-            assertStoredEventEquals(event);
+            ReadEvent readEvent = assertStoredEventEquals(event);
+            assertEquals(aggregateId, readEvent.getAggregateId());
+            assertEquals(i++, readEvent.getAggregateVersion());
         }
     }
 
@@ -85,11 +90,13 @@ public class PostgresEventRepositoryTest {
         repository.store("42", 3, anEvent());
     }
 
-    private void assertStoredEventEquals(WriteEvent event) {
+    private ReadEvent assertStoredEventEquals(WriteEvent event) {
         ReadEvent retrieved = repository.findOneById(event.getId());
 
         assertEquals(event, retrieved.toWriteEvent());
         assertEquals(retrieved.getReceivedAt(), clock.instant());
+
+        return retrieved;
     }
 
     private WriteEvent anEvent() {
