@@ -50,12 +50,39 @@ public class PostgresEventRepositoryTest {
 
     @Test
     public void itShouldStoreAnEvent() {
+        EventDTO event = anEvent(0);
+
+        repository.store(event);
+
+        assertEquals(1L, repository.count());
+
+        assertStoredEventEquals(event);
+    }
+
+    @Test
+    public void itShouldStoreAnEventBatch()
+    {
+        EventDTO[] events = {anEvent(0), anEvent(1)};
+        repository.store(events);
+
+        assertEquals(events.length, repository.count());
+        for(EventDTO event : events) {
+            assertStoredEventEquals(event);
+        }
+    }
+
+    private void assertStoredEventEquals(EventDTO event) {
+        EventDTO retrieved = repository.findOneById(event.getId());
+        assertEquals(event, retrieved);
+    }
+
+    private EventDTO anEvent(int aggregateVersion) {
         UUID uuid = UUID.randomUUID();
 
-        EventDTO event = new EventDTO(
+        return new EventDTO(
                 uuid,
                 "42",
-                1,
+                aggregateVersion,
                 Instant.ofEpochMilli(1459589665000L),
                 "somewhere",
                 "something-happened",
@@ -63,13 +90,5 @@ public class PostgresEventRepositoryTest {
                 "{foo: \"bar\"}",
                 Instant.ofEpochMilli(1459589665010L)
         );
-
-        repository.store(event);
-
-        assertEquals(1L, repository.count());
-
-        EventDTO retrieved = repository.findOneById(uuid);
-
-        assertEquals(event, retrieved);
     }
 }

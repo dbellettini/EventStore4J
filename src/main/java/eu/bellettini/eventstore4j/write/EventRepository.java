@@ -7,7 +7,7 @@ public interface EventRepository {
 
     void clean();
 
-    void store(EventDTO event);
+    void store(EventDTO... events);
 
     EventDTO findOneById(UUID id);
 }

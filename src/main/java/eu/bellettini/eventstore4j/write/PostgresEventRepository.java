@@ -38,25 +38,26 @@ public class PostgresEventRepository implements EventRepository, AutoCloseable {
     }
 
     @Override
-    public void store(EventDTO event) {
+    public void store(EventDTO... events) {
         final String sql = "INSERT INTO events " +
                 "(event_id, aggregate_id, aggregate_version, created_at, source," +
                 "type, type_version, payload, received_at) " +
                 "VALUES (?::uuid,?,?,?,?,?,?,?::json,?)";
 
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            int i = 0;
-            stmt.setString(++i, event.getId().toString());
-            stmt.setString(++i, event.getAggregateId());
-            stmt.setLong(++i, event.getAggregateVersion());
-            stmt.setTimestamp(++i, Timestamp.from(event.getCreatedAt()));
-            stmt.setString(++i, event.getSource());
-            stmt.setString(++i, event.getType());
-            stmt.setInt(++i, event.getTypeVersion());
-            stmt.setString(++i, event.getPayload().toString());
-            stmt.setTimestamp(++i, Timestamp.from(event.getReceivedAt()));
-
-            stmt.execute();
+            for (EventDTO event: events) {
+                int i = 0;
+                stmt.setString(++i, event.getId().toString());
+                stmt.setString(++i, event.getAggregateId());
+                stmt.setLong(++i, event.getAggregateVersion());
+                stmt.setTimestamp(++i, Timestamp.from(event.getCreatedAt()));
+                stmt.setString(++i, event.getSource());
+                stmt.setString(++i, event.getType());
+                stmt.setInt(++i, event.getTypeVersion());
+                stmt.setString(++i, event.getPayload().toString());
+                stmt.setTimestamp(++i, Timestamp.from(event.getReceivedAt()));
+                stmt.execute();
+            }
         } catch (SQLException e) {
             throw new EventStoreException(e);
         }
