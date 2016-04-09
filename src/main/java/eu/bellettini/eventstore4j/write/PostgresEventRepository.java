@@ -40,14 +40,15 @@ public class PostgresEventRepository implements EventRepository {
             return;
         }
 
-        ensureSubsequentAggregateVersions(events);
-
         final String sql = "INSERT INTO events " +
                 "(event_id, aggregate_id, aggregate_version, created_at, source," +
                 "type, type_version, payload, received_at) " +
                 "VALUES (?::uuid,?,?,?,?,?,?,?::json,?)";
 
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            connection.setAutoCommit(false);
+            ensureSubsequentAggregateVersions(events);
+
             for (EventDTO event: events) {
                 int i = 0;
                 stmt.setString(++i, event.getId().toString());
@@ -63,6 +64,12 @@ public class PostgresEventRepository implements EventRepository {
             }
         } catch (SQLException e) {
             throw new EventStoreException(e);
+        } finally {
+            try {
+                connection.setAutoCommit(true);
+            } catch (SQLException e) {
+                throw new EventStoreException(e);
+            }
         }
     }
 
