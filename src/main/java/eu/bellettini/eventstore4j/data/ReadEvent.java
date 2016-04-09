@@ -81,4 +81,37 @@ public final class ReadEvent {
     public WriteEvent toWriteEvent() {
         return new WriteEvent(getId(), getCreatedAt(), getSource(), getType(), getTypeVersion(), getPayload());
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        ReadEvent readEvent = (ReadEvent) o;
+
+        if (aggregateVersion != readEvent.aggregateVersion) return false;
+        if (typeVersion != readEvent.typeVersion) return false;
+        if (!id.equals(readEvent.id)) return false;
+        if (!aggregateId.equals(readEvent.aggregateId)) return false;
+        if (!createdAt.equals(readEvent.createdAt)) return false;
+        if (!source.equals(readEvent.source)) return false;
+        if (!type.equals(readEvent.type)) return false;
+        if (!payload.toString().equals(readEvent.payload.toString())) return false;
+        return receivedAt.equals(readEvent.receivedAt);
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = id.hashCode();
+        result = 31 * result + aggregateId.hashCode();
+        result = 31 * result + (int) (aggregateVersion ^ (aggregateVersion >>> 32));
+        result = 31 * result + createdAt.hashCode();
+        result = 31 * result + source.hashCode();
+        result = 31 * result + type.hashCode();
+        result = 31 * result + typeVersion;
+        result = 31 * result + payload.toString().hashCode();
+        result = 31 * result + receivedAt.hashCode();
+        return result;
+    }
 }
