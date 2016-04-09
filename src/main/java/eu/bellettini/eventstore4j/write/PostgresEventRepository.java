@@ -27,10 +27,7 @@ public class PostgresEventRepository implements EventRepository {
 
     @Override
     public void clean() {
-
-        Statement stmt;
-        try {
-            stmt = connection.createStatement();
+        try (Statement stmt = connection.createStatement()) {
             stmt.execute("TRUNCATE TABLE events");
         } catch (SQLException e) {
             throw new EventStoreException(e);
