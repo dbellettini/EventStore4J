@@ -69,11 +69,11 @@ public class PostgresEventRepositoryTest {
     {
         WriteEvent[] events = {anEvent(), anEvent()};
         String aggregateId = "42";
-        repository.store(aggregateId, 0, events);
+        repository.store(aggregateId, events);
 
         int i = 0;
         assertEquals(events.length, repository.count());
-        
+
         for(WriteEvent event : events) {
             ReadEvent readEvent = assertStoredEventEquals(event);
             assertEquals(aggregateId, readEvent.getAggregateId());

@@ -47,6 +47,15 @@ public class PostgresEventRepository implements EventRepository {
         storeEvents(aggregateId, expectedVersion, events);
     }
 
+    @Override
+    public void store(String aggregateId, WriteEvent... events) {
+        if (nothingToStore(events)) {
+            return;
+        }
+
+        storeEvents(aggregateId, count(aggregateId), events);
+    }
+
     private void ensureExpectedVersion(String aggregateId, long expectedVersion) {
         long actualVersion = count(aggregateId);
         if (actualVersion != expectedVersion) {
