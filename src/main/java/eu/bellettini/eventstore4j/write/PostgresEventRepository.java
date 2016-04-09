@@ -1,14 +1,17 @@
 package eu.bellettini.eventstore4j.write;
 
 import java.sql.*;
+import java.time.Clock;
 import java.util.UUID;
 
 public class PostgresEventRepository implements EventRepository {
     private final Connection connection;
+    private final Clock clock;
 
 
-    public PostgresEventRepository(Connection connection) {
+    public PostgresEventRepository(Connection connection, Clock clock) {
         this.connection = connection;
+        this.clock = clock;
     }
 
     @Override
@@ -59,7 +62,7 @@ public class PostgresEventRepository implements EventRepository {
                 stmt.setString(++i, event.getType());
                 stmt.setInt(++i, event.getTypeVersion());
                 stmt.setString(++i, event.getPayload().toString());
-                stmt.setTimestamp(++i, Timestamp.from(event.getReceivedAt()));
+                stmt.setTimestamp(++i, Timestamp.from(clock.instant()));
                 stmt.execute();
             }
         } catch (SQLException e) {

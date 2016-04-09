@@ -10,7 +10,9 @@ import org.junit.Test;
 import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Properties;
 import java.util.UUID;
 
@@ -18,6 +20,8 @@ public class PostgresEventRepositoryTest {
     private static Connection connection;
 
     private PostgresEventRepository repository;
+
+    private Clock clock;
 
     @BeforeClass
     public static void initSchema() throws Exception {
@@ -39,7 +43,8 @@ public class PostgresEventRepositoryTest {
 
     @Before
     public void setUp() throws Exception {
-        repository = new PostgresEventRepository(connection);
+        clock = Clock.fixed(Instant.now(), ZoneId.of("UTC"));
+        repository = new PostgresEventRepository(connection, clock);
         repository.clean();
     }
 
@@ -104,7 +109,9 @@ public class PostgresEventRepositoryTest {
                 "something-happened",
                 1,
                 "{foo: \"bar\"}",
-                Instant.ofEpochMilli(1459589665010L)
+                clock.instant()
         );
     }
 }
+
+
