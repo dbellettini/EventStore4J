@@ -1,4 +1,4 @@
-package eu.bellettini.eventstore4j.write;
+package eu.bellettini.eventstore4j.data;
 
 public class EventStoreException extends RuntimeException {
     public EventStoreException(String message) {

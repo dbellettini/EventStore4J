@@ -1,4 +1,4 @@
-package eu.bellettini.eventstore4j.write;
+package eu.bellettini.eventstore4j.data;
 
 public class ConsistencyException extends EventStoreException {
     public ConsistencyException(String message) {
