@@ -55,9 +55,9 @@ public class PostgresEventRepositoryTest {
 
     @Test
     public void itShouldStoreAnEvent() {
-        EventDTO event = anEvent(0);
+        WriteEvent event = anEvent();
 
-        repository.store(event);
+        repository.store("42", 0, event);
 
         assertEquals(1L, repository.count());
 
@@ -67,49 +67,41 @@ public class PostgresEventRepositoryTest {
     @Test
     public void itShouldStoreAnEventBatch()
     {
-        EventDTO[] events = {anEvent(0), anEvent(1)};
-        repository.store(events);
+        WriteEvent[] events = {anEvent(), anEvent()};
+        repository.store("42", 0, events);
 
         assertEquals(events.length, repository.count());
-        for(EventDTO event : events) {
+        for(WriteEvent event : events) {
             assertStoredEventEquals(event);
         }
     }
 
     @Test(expected = ConsistencyException.class)
-    public void itShouldAvoidNonSubsequentAggregateVersionsOnASingleBatch()
-    {
-        EventDTO[] events = {anEvent(0), anEvent(2)};
-        repository.store(events);
-    }
-
-    @Test(expected = ConsistencyException.class)
     public void itShouldAvoidNonSubsequentAggregateVersionsInDifferentBatches()
     {
-        EventDTO[] events = {anEvent(0), anEvent(1)};
+        WriteEvent[] events = {anEvent(), anEvent()};
 
-        repository.store(events);
-        repository.store(anEvent(3));
+        repository.store("42", 0, events);
+        repository.store("42", 3, anEvent());
     }
 
-    private void assertStoredEventEquals(EventDTO event) {
-        EventDTO retrieved = repository.findOneById(event.getId());
-        assertEquals(event, retrieved);
+    private void assertStoredEventEquals(WriteEvent event) {
+        ReadEvent retrieved = repository.findOneById(event.getId());
+
+        assertEquals(event, retrieved.toWriteEvent());
+        assertEquals(retrieved.getReceivedAt(), clock.instant());
     }
 
-    private EventDTO anEvent(int aggregateVersion) {
+    private WriteEvent anEvent() {
         UUID uuid = UUID.randomUUID();
 
-        return new EventDTO(
+        return new WriteEvent(
                 uuid,
-                "42",
-                aggregateVersion,
                 Instant.ofEpochMilli(1459589665000L),
                 "somewhere",
                 "something-happened",
                 1,
-                "{foo: \"bar\"}",
-                clock.instant()
+                "{foo: \"bar\"}"
         );
     }
 }

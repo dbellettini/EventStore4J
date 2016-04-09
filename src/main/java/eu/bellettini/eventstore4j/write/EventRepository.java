@@ -7,7 +7,7 @@ public interface EventRepository {
 
     void clean();
 
-    void store(EventDTO... events);
+    void store(String aggregateId, long expectedVersion, WriteEvent... events);
 
-    EventDTO findOneById(UUID id);
+    ReadEvent findOneById(UUID id);
 }

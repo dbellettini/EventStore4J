@@ -38,11 +38,26 @@ public class PostgresEventRepository implements EventRepository {
     }
 
     @Override
-    public void store(EventDTO... events) {
-        if (events.length == 0) {
+    public void store(String aggregateId, long expectedVersion, WriteEvent... events) {
+        if (nothingToStore(events)) {
             return;
         }
 
+        ensureExpectedVersion(aggregateId, expectedVersion);
+        storeEvents(aggregateId, expectedVersion, events);
+    }
+
+    private void ensureExpectedVersion(String aggregateId, long expectedVersion) {
+        long actualVersion = count(aggregateId);
+        if (actualVersion != expectedVersion) {
+            throw new ConsistencyException(
+                    String.format("Expected version %d got %d", expectedVersion, actualVersion)
+            );
+        }
+    }
+
+
+    private void storeEvents(String aggregateId, long expectedVersion, WriteEvent[] events) {
         final String sql = "INSERT INTO events " +
                 "(event_id, aggregate_id, aggregate_version, created_at, source," +
                 "type, type_version, payload, received_at) " +
@@ -50,13 +65,13 @@ public class PostgresEventRepository implements EventRepository {
 
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             connection.setAutoCommit(false);
-            ensureSubsequentAggregateVersions(events);
 
-            for (EventDTO event: events) {
+            long version = expectedVersion;
+            for (WriteEvent event: events) {
                 int i = 0;
                 stmt.setString(++i, event.getId().toString());
-                stmt.setString(++i, event.getAggregateId());
-                stmt.setLong(++i, event.getAggregateVersion());
+                stmt.setString(++i, aggregateId);
+                stmt.setLong(++i, version++);
                 stmt.setTimestamp(++i, Timestamp.from(event.getCreatedAt()));
                 stmt.setString(++i, event.getSource());
                 stmt.setString(++i, event.getType());
@@ -77,7 +92,7 @@ public class PostgresEventRepository implements EventRepository {
     }
 
     @Override
-    public EventDTO findOneById(UUID id) {
+    public ReadEvent findOneById(UUID id) {
         final String sql = "SELECT " +
                 "event_id::text, aggregate_id, aggregate_version, created_at, source, type, type_version, " +
                 "payload::text, received_at " +
@@ -95,8 +110,8 @@ public class PostgresEventRepository implements EventRepository {
         }
     }
 
-    private EventDTO dtoFromResultSet(ResultSet resultSet) throws SQLException {
-        return new EventDTO(
+    private ReadEvent dtoFromResultSet(ResultSet resultSet) throws SQLException {
+        return new ReadEvent(
                 UUID.fromString(resultSet.getString(1)),
                 resultSet.getString(2),
                 resultSet.getLong(3),
@@ -109,15 +124,8 @@ public class PostgresEventRepository implements EventRepository {
         );
     }
 
-    private void ensureSubsequentAggregateVersions(EventDTO... events)
-    {
-        long start = count(events[0].getAggregateId());
-
-        for (int i = 0; i < events.length; ++i) {
-            if (events[i].getAggregateVersion() != i + start) {
-                throw new ConsistencyException("Non subsequent aggregate versions");
-            }
-        }
+    private boolean nothingToStore(WriteEvent[] events) {
+        return events.length == 0;
     }
 
     private long count(String aggregateId) {
